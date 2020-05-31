@@ -1,0 +1,116 @@
+Ashby / Beer self-vetoing homeostat
+-----------------------------------
+Interacting, coupled systems and environments - discrete states, single discrete time steps
+
+
+Systems, transitions, nondeterministic transition
+- states, transitions
+- state can just be an identifier
+- mark a system A in state i as A[i]
+- deterministic transition: 
+    where a system A is coupled to the systems (B1,...,Bn), we have, for all states i in A
+    and all state tuples on *visible states* V1 x V2 x ... x Vn, we have a transition
+        i , (v1,...,vn) -> i'
+        
+- nondeterministic transition
+    where a system A is coupled to the systems (B1,...,Bn), we have, for all states i in A
+    and all state tuples on *visible states* V1 x ... x Vn, we have a transition
+        i , (v1,...,vn) -> (i'1:p1, ..., i'm:pm)
+    where i'k:pk is the probability of state i'k being reached as a result of the transition, sum(p1,...,pm) = 1,
+    m >= 1
+- "death state" - a state where all transitions lead back to it
+- Making a transition: deterministic
+    on a timestep
+        1) each system looks at all its incoming couplings, drawing from them the state tuple for the transition
+        2) each system uses its state tuple (v1,...,vn) and current state i to look up the transition 
+            i , (v1,...,vn) -> i'
+           and sets itself to state i', informing all its outgoing couplings of the change
+- Making a transition: nondeterministic
+    on a timestep
+        1) each system looks at all its incoming couplings, drawing from them the state tuple for the transition
+        2) each system uses its state tuple (v1,...,vn) and current state i to look up the transition 
+            i , (v1,...,vn) -> (i'1:p1, ..., i'm:pm)
+           it chooses a random state i' from {i'1,...,i'm} using the appropriate probabilities
+           it sets itself to state i', informing all its outgoing couplings of the change
+      
+      
+Couplings, visible states (state mappings), and probabilistic couplings
+- for systems A and B coupled by C=A->B, *visible states* of A in B are the outputs of C
+- where A has states i1,...,im, we can map these to arbitrary elements of the set of visible states V={v1,...,vn} (k >= 1)
+    for all i_j in A, exists some mapping i_j -> vk  where vk in V
+    
+- example: we have the identity mapping V=A={i1,...,im}
+    i1->i1, ..., im->im
+    
+- example: Beer's homeostasis or not (h and n as outputs, V={h, n})
+    i1->h, i2->n, i3->n,..., im->h
+    
+- let's add probabilistic couplings too: a probabilistic coupling is a coupling where 
+    for all i_j in A, exists some probabilistic mapping i_j -> {v1:p1,...,vn:pn}
+    
+  with sum(p1,...,pn) = 1, and pk giving the probability that given an input of i_j, the
+  coupling will produce output vk. a mapping i_j -> v_k is considered a special case where pk=1 and all other p=0
+- these are kind of special cases of a coupling being a system in its own right
+- CAN COUPLINGS CONDITION EACH OTHER? CAN COUPLINGS BE CONDITIONED OR ARE THEY FIXED?
+    let's say no for now, they're fixed
+
+
+Types of interacting system
+- Environment
+    not all aspects of it (states) impinge on every system - some leave the system unaffected
+- Perturbing input
+    changes its state through some internal logic, no incoming couplings
+- Environment input
+    changes its state through some internal logic, no incoming couplings
+    not all aspects of it (states) impinge on every system - some leave the system unaffected
+- Deterministic system
+    all deterministic transitions
+- Non-deterministic system
+    at least one nondeterministic transition
+
+
+
+    
+    
+Design:
+---------------
+Every system and coupling has a unique identifier (string? maybe caps for systems, lower case for couplings) 
+
+a system A has:
+- identifier
+- a current state
+- a list of all possible states
+- a set of homeostasis states
+- a set of "end" states
+- a single transition table, as described above, containing
+    rows: coupling visible state tuples in V1 x ... x Vn; columns: system states
+    a link to each coupling
+    a way to extract the current visible state tuple
+    a "transition(oldState): State" message to use the retrieved state tuple and old state with the transition table to return the new state
+- a list of outgoing couplings (no index needed, it's a blanket update)
+- a prepareTransition() message to retrieve the current state tuple
+- a transition() message to pass the current state into the transition table and set the current state to the returned result
+
+
+A coupling c=A1->A2 has:
+- identifier
+- currently-set signal
+- a map of states s in A1 to corresponding visible states v in V
+    function? got to have access to the state of A1, its other data too
+    (otherwise how does it know which states are homeostasis ones? maybe passed
+     in on creation? what about the transition table? maybe later...)
+- signal(state) operation to indicate that A1 has changed state
+- retrieve() operation to apply the map s->v for the current state and give v to the transition table of A2
+
+A transition table T for A has:
+- an *ordered* list of couplings mapping to tuple positions
+- a transition function A -> (V1, ..., Vn) -> A
+
+How do we adapt this to allow each system A to "learn"?
+- have to have extra data, and allow the transition table to be updated with each iteration based on previous state, current state etc
+- have to allow learning "style" to switch based on current conditions
+so: a learning "object" that has access to all the current data, is given the resulting state on transition(); also needs access to
+the initial state of the object
+learnFrom(newState)
+startState(state)
+must have access to the transition table so it can change it

@@ -1,0 +1,3 @@
+interface markup for ISystem, then a Source class
+LearningStrategy
+implementations
