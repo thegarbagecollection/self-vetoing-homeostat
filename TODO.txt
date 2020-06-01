@@ -1,3 +1,7 @@
 interface markup for ISystem, then a Source class
 LearningStrategy
 implementations
+
+need the visibleState tuple to also include, for each state, its source system identifier
+
+speed of perturbation

@@ -68,7 +68,7 @@ Types of interacting system
 - Non-deterministic system
     at least one nondeterministic transition
 
-
+TODO: we want a speed of perturbation for the perturbing / environmental inputs
 
     
     

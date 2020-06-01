@@ -20,6 +20,13 @@ class TransitionTable {
     transition() {
 
     }
+
+    /**
+     * @returns {Array.<{sourceID: String, visibleState: VisibleState}>}
+     */
+    getVisibleStateTuple() {
+
+    }
 }
 
 /**

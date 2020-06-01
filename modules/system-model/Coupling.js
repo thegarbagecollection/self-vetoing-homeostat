@@ -5,15 +5,17 @@ class Coupling {
     /**
      * 
      * @param {String} identifier 
-     * @param {(state:State) => State} toVisibleState 
+     * @param {(state:State) => VisibleState} toVisibleState 
+     * @param {String} sourceIdentifier
      */
-    constructor(identifier, toVisibleState) {
+    constructor(identifier, toVisibleState, sourceIdentifier) {
         this.identifier = identifier
         /**
          * @type {State}
          */
         this.currentSignal = null
         this.toVisibleState = toVisibleState
+        this.sourceIdentifier = sourceIdentifier
     }
 
     /**
@@ -25,7 +27,7 @@ class Coupling {
     }      
 
     /**
-     * @returns {State}
+     * @returns {VisibleState}
      */
     retrieve() {
         return this.toVisibleState(this.currentSignal)

@@ -4,44 +4,46 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>370</x>
-      <y>450</y>
-      <w>230</w>
+      <x>350</x>
+      <y>480</y>
+      <w>280</w>
       <h>170</h>
     </coordinates>
     <panel_attributes>System
 --
-identifier: String
+identifier: StringID
 currentState: State
 allStates: List&lt;State&gt;
 homeostasisStates: Set&lt;State&gt;
 endStates: Set&lt;State&gt;
---</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <id>UMLClass</id>
-    <coordinates>
-      <x>630</x>
-      <y>770</y>
-      <w>230</w>
-      <h>130</h>
-    </coordinates>
-    <panel_attributes>Coupling
 --
-identifier: String
-currentSignal: State
-toVisibleState: State -&gt; VisibleState
---
-signal(s: State)
-retrieve(): State</panel_attributes>
+setLearningStrategy(ls: LearningStrategy)</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
       <x>660</x>
-      <y>80</y>
+      <y>800</y>
+      <w>230</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>Coupling
+--
+identifier: StringID
+sourceIdentifier: StringID
+currentSignal: State
+toVisibleState: State -&gt; VisibleState
+--
+signal(s: State)
+retrieve(): VisibleState</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>690</x>
+      <y>110</y>
       <w>100</w>
       <h>50</h>
     </coordinates>
@@ -52,8 +54,8 @@ retrieve(): State</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>820</x>
-      <y>460</y>
+      <x>850</x>
+      <y>490</y>
       <w>450</w>
       <h>120</h>
     </coordinates>
@@ -61,32 +63,33 @@ retrieve(): State</panel_attributes>
 --
 
 --
-prepareTransition()
-transition(): State</panel_attributes>
+prepareTransition(currState: State)
+transition(): State
+getVisibleStateTuple(): Array&lt;(StringID, VisibleState)&gt;</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>570</x>
-      <y>220</y>
-      <w>280</w>
-      <h>160</h>
+      <x>590</x>
+      <y>250</y>
+      <w>300</w>
+      <h>110</h>
     </coordinates>
-    <panel_attributes>LearningStrategy
+    <panel_attributes>/LearningStrategy/
+&lt;&lt;abstract&gt;&gt;
 --
-
 --
-startState(s: State)
-learnFrom(s: State)
-setup(sys: System, tt: TransitionTable)</panel_attributes>
+setup(sys: System, tt: TransitionTable)
+&lt;&lt;abstract&gt;&gt; transitionReady()
+&lt;&lt;abstract&gt;&gt; transitionComplete()</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>590</x>
-      <y>480</y>
+      <x>620</x>
+      <y>510</y>
       <w>250</w>
       <h>50</h>
     </coordinates>
@@ -99,8 +102,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>470</x>
-      <y>610</y>
+      <x>500</x>
+      <y>640</y>
       <w>180</w>
       <h>220</h>
     </coordinates>
@@ -114,8 +117,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>850</x>
-      <y>570</y>
+      <x>880</x>
+      <y>600</y>
       <w>220</w>
       <h>240</h>
     </coordinates>
@@ -128,22 +131,22 @@ lt=[index]-&gt;</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>840</x>
-      <y>230</y>
-      <w>170</w>
+      <x>880</x>
+      <y>260</y>
+      <w>160</w>
       <h>250</h>
     </coordinates>
     <panel_attributes>r2=transitionTable
 m1=0..1
 m2=1
 lt=-&gt;</panel_attributes>
-    <additional_attributes>10.0;10.0;60.0;10.0;60.0;230.0</additional_attributes>
+    <additional_attributes>10.0;10.0;50.0;10.0;50.0;230.0</additional_attributes>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>980</x>
-      <y>250</y>
+      <x>1010</x>
+      <y>280</y>
       <w>250</w>
       <h>120</h>
     </coordinates>
@@ -158,8 +161,8 @@ setDistribution(d: Distribution)</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>1160</x>
-      <y>290</y>
+      <x>1190</x>
+      <y>320</y>
       <w>250</w>
       <h>260</h>
     </coordinates>
@@ -172,8 +175,8 @@ r2=transitionMap</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>440</x>
-      <y>220</y>
+      <x>460</x>
+      <y>250</y>
       <w>150</w>
       <h>250</h>
     </coordinates>
@@ -182,13 +185,13 @@ r2=learningStrategy
 m1=1
 m2=0..1
 lt=&lt;-&gt;</panel_attributes>
-    <additional_attributes>20.0;230.0;20.0;20.0;130.0;20.0</additional_attributes>
+    <additional_attributes>30.0;230.0;30.0;20.0;130.0;20.0</additional_attributes>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>980</x>
-      <y>30</y>
+      <x>1010</x>
+      <y>60</y>
       <w>250</w>
       <h>110</h>
     </coordinates>
@@ -204,8 +207,8 @@ get(r: Real)
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>1080</x>
-      <y>130</y>
+      <x>1110</x>
+      <y>160</y>
       <w>90</w>
       <h>140</h>
     </coordinates>
@@ -218,8 +221,8 @@ r2=distribution</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>180</x>
-      <y>250</y>
+      <x>210</x>
+      <y>280</y>
       <w>230</w>
       <h>100</h>
     </coordinates>
@@ -234,14 +237,14 @@ transition()</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>10</x>
-      <y>450</y>
+      <x>40</x>
+      <y>480</y>
       <w>230</w>
       <h>140</h>
     </coordinates>
     <panel_attributes>Source
 --
-identifier: String
+identifier: StringID
 currentState: State
 allStates: List&lt;State&gt;
 --</panel_attributes>
@@ -250,8 +253,8 @@ allStates: List&lt;State&gt;
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>100</x>
-      <y>580</y>
+      <x>130</x>
+      <y>610</y>
       <w>550</w>
       <h>320</h>
     </coordinates>
@@ -265,8 +268,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>110</x>
-      <y>340</y>
+      <x>140</x>
+      <y>370</y>
       <w>160</w>
       <h>130</h>
     </coordinates>
@@ -277,8 +280,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>360</x>
-      <y>340</y>
+      <x>390</x>
+      <y>370</y>
       <w>130</w>
       <h>130</h>
     </coordinates>
@@ -289,8 +292,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>790</x>
-      <y>80</y>
+      <x>820</x>
+      <y>110</y>
       <w>100</w>
       <h>50</h>
     </coordinates>
@@ -301,8 +304,8 @@ lt=-&gt;</panel_attributes>
   <element>
     <id>UMLNote</id>
     <coordinates>
-      <x>1290</x>
-      <y>550</y>
+      <x>1320</x>
+      <y>580</y>
       <w>280</w>
       <h>40</h>
     </coordinates>
@@ -314,8 +317,8 @@ bg=yellow</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>1270</x>
-      <y>370</y>
+      <x>1300</x>
+      <y>400</y>
       <w>150</w>
       <h>40</h>
     </coordinates>
@@ -326,8 +329,8 @@ bg=yellow</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>1400</x>
-      <y>320</y>
+      <x>1430</x>
+      <y>350</y>
       <w>320</w>
       <h>120</h>
     </coordinates>
