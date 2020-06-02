@@ -1,7 +1,10 @@
-interface markup for ISystem, then a Source class
-LearningStrategy
 implementations
 
-need the visibleState tuple to also include, for each state, its source system identifier
+system processing delays (see notes)
 
 speed of perturbation
+
+different rendering modes - transition table or state-set (amoeba-like/rectangular)
+
+interactive with rendering?
+

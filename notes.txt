@@ -114,3 +114,18 @@ the initial state of the object
 learnFrom(newState)
 startState(state)
 must have access to the transition table so it can change it
+
+UPDATE: LearningStrategy
+- can only see when transition IS COMPLETED
+- has access to the old state + the visible state tuple, their associated probability distribution, and the new state
+
+
+
+
+OPTIONAL system features
+--------------------------
+delay in processing a received signal: d_p; how long from the first time a signal is received until it is processed?
+delay between signal receiving: d_r ; after a signal is received, how long until the next is received?
+warm-up delay: d_w     (delay until first processing)
+default 0 for all
+then need a limited memory of some capacity, set to either discard newest or discard oldest

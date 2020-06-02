@@ -3,22 +3,44 @@
  */
 class LearningStrategy {
   constructor() {
+    /**
+     * @type {System}
+     */
     this.system = null
+
+    /**
+     * @type {TransitionTable}
+     */
     this.transitionTable = null
+
+    /**
+     * @type {State}
+     */
+    this.startState = null
   }
 
+  /**
+   *
+   * @param {System} system
+   * @param {TransitionTable} transitionTable
+   */
   setup(system, transitionTable) {
-      this.system = system
-      this.transitionTable = transitionTable
+    this.system = system
+    this.transitionTable = transitionTable
+    this.startState = system.state
+  }
+
+  transition() {
+    // could put other transition-preparation stuff in here
+    let t = this.transitionTable.getCompletedTransition()
+    this.transitionComplete(t)
   }
 
   /**
    * @abstract
+   * @param {CompletedTransition} transition
    */
-  transitionReady() { throw "transitionReady() not implemented" }
-
-  /**
-   * @abstract
-   */
-  transitionComplete() { throw "transitionComplete() not implemented" }
+  transitionComplete(transition) {
+    throw "transitionComplete() not implemented"
+  }
 }

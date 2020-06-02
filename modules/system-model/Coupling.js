@@ -4,12 +4,14 @@
 class Coupling {
     /**
      * 
+     * @param {String} displayName
      * @param {String} identifier 
      * @param {(state:State) => VisibleState} toVisibleState 
      * @param {String} sourceIdentifier
      */
-    constructor(identifier, toVisibleState, sourceIdentifier) {
+    constructor(identifier, displayName, sourceIdentifier, toVisibleState) {
         this.identifier = identifier
+        this.displayName = displayName
         /**
          * @type {State}
          */
