@@ -84,7 +84,7 @@ class TransitionTable {
  * in which case final key is used to extract the value. Note that s must be in the correct order!
  *
  * An exception is raised if 1 + s.length !== the number of maps contained
- * 
+ *
  * May also be used as a regular map if s.length === 0
  */
 class NestedStateMap {
@@ -113,8 +113,7 @@ class NestedStateMap {
     if (secondaries && secondaries.length !== this.secondaryCount) throw `get() given secondaries of length ${secondaries.length}; required ${this.secondaryCount}`
     if (!secondaries || secondaries.length === 0) {
       return this.map.get(pk)
-    }
-    else {
+    } else {
       /** @type {Map | Value} */
       let outer = this.map.get(pk)
       sks.forEach(sk => {
@@ -144,7 +143,8 @@ class NestedStateMap {
 
       sks.forEach((sk, i) => {
         // need to distinguish the case where this is the last sk (maps to value) rather than not (maps to Map)
-        if (i === sks.length - 1) { // last element, so needs to set a value
+        if (i === sks.length - 1) {
+          // last element, so needs to set a value
           outer.set(sk, value)
         }
         if (!outer.has(sk) && i < sks.length - 1) {
@@ -160,7 +160,7 @@ class NestedStateMap {
 class ProbabilisticState {
   /**
    *
-   * @param {Array.<{s: State, p: Number}>} distribution
+   * @param {Distribution} distribution
    */
   constructor(distribution) {
     this.distribution = distribution
@@ -169,7 +169,9 @@ class ProbabilisticState {
   /**
    * @returns {State}
    */
-  transition() {}
+  transition() {
+    return this.distribution.get(Math.random())
+  }
 
   /**
    *
@@ -192,8 +194,26 @@ class Distribution {
   /**
    *
    * @param {Number} r in [0,1]
+   * @returns {State}
    */
-  get(r) {}
+  get(r) {
+    for (let i = 0; i < this.lookup.length; i++) {
+      if (r <= this.lookup[i].r) return this.lookup[i].s
+    }
+    throw "ran off the end of the random array for unknown reasons"
+  }
 
-  computeLookup() {}
+  /**
+   * @returns {Array.<{r: Number, s: State}>}
+   */
+  computeLookup() {
+    let lookup = []
+    let sum = 0
+    this.distribution.forEach(({ s, p }) => {
+      sum += p
+      lookup.push({ r: sum, s })
+    })
+    lookup[lookup.length-1].r = 1.0 // just in case of FP errors leaving us without a sum of 1
+    return lookup
+  }
 }
