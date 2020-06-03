@@ -1,5 +1,7 @@
 implementations
 
+system null-transition as base
+
 system processing delays (see notes)
 
 speed of perturbation

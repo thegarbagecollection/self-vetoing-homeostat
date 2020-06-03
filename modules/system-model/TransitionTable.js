@@ -84,14 +84,21 @@ class TransitionTable {
  * in which case final key is used to extract the value. Note that s must be in the correct order!
  *
  * An exception is raised if 1 + s.length !== the number of maps contained
+ * 
+ * May also be used as a regular map if s.length === 0
  */
 class NestedStateMap {
   /**
-   * 
-   * @param {Number} secondaryCount 
+   *
+   * @param {Number} secondaryCount
+   * @param {(p: PrimaryK) => any} pkExtractor extracts the key from the primary object
+   * @param {(s: SecondaryK) => any} skExtractor extracts the key from the primary object
    */
-  constructor(secondaryCount) {
+  constructor(secondaryCount, pkExtractor, skExtractor) {
+    this.map = new Map()
     this.secondaryCount = secondaryCount
+    this.pkExtractor = pkExtractor
+    this.skExtractor = skExtractor
   }
   /**
    *
@@ -100,8 +107,22 @@ class NestedStateMap {
    * @returns {Value}
    */
   get(primary, secondaries) {
-    if (secondaries.length !== this.secondaryCount) throw `get() given secondaries of length ${secondaries.length}; required ${this.secondaryCount}`
-    
+    let pk = this.pkExtractor(primary)
+    if (!this.map.has(pk)) `key not found: ${pk} of (${pk}, ${sks.toString()})`
+    let sks = secondaries.map(this.skExtractor)
+    if (secondaries && secondaries.length !== this.secondaryCount) throw `get() given secondaries of length ${secondaries.length}; required ${this.secondaryCount}`
+    if (!secondaries || secondaries.length === 0) {
+      return this.map.get(pk)
+    }
+    else {
+      /** @type {Map | Value} */
+      let outer = this.map.get(pk)
+      sks.forEach(sk => {
+        if (!outer.has(sk)) throw `key not found: ${sk} of (${pk}, ${sks.toString()})`
+        outer = outer.get(sk) // in last iteration, this gets assigned a Value
+      })
+      return outer
+    }
   }
 
   /**
@@ -111,7 +132,28 @@ class NestedStateMap {
    * @param {Value} value
    */
   set(primary, secondaries, value) {
-    if (secondaries.length !== this.secondaryCount) throw `set() given secondaries of length ${secondaries.length}; required ${this.secondaryCount}`
+    let pk = this.pkExtractor(primary)
+    let sks = secondaries.map(this.skExtractor)
+    if (secondaries && secondaries.length !== this.secondaryCount) throw `set() given secondaries of length ${secondaries.length}; required ${this.secondaryCount}`
+    if (!secondaries || secondaries.length === 0) {
+      this.map.set(pk, value)
+    } else {
+      if (!this.map.has(pk)) this.map.set(pk, new Map())
+      /** @type {Map} */
+      let outer = this.map.get(pk)
+
+      sks.forEach((sk, i) => {
+        // need to distinguish the case where this is the last sk (maps to value) rather than not (maps to Map)
+        if (i === sks.length - 1) { // last element, so needs to set a value
+          outer.set(sk, value)
+        }
+        if (!outer.has(sk) && i < sks.length - 1) {
+          outer.set(sk, new Map())
+        }
+        /** @type {Map} */
+        outer = outer.get(sk) // in the last iteration, this gets assigned a non-map, but doesn't matter because we're done
+      })
+    }
   }
 }
 

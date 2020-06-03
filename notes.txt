@@ -105,6 +105,8 @@ A coupling c=A1->A2 has:
 A transition table T for A has:
 - an *ordered* list of couplings mapping to tuple positions
 - a transition function A -> (V1, ..., Vn) -> A
+- A TRANSITION `TABLE` MIGHT ONLY BE A STATE MAPPING WITH NO INPUT! s1 -> s2, s2 -> s3, s3 -> s2 etc.
+
 
 How do we adapt this to allow each system A to "learn"?
 - have to have extra data, and allow the transition table to be updated with each iteration based on previous state, current state etc
