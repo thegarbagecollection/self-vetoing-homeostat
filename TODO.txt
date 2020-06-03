@@ -1,12 +1,16 @@
-implementations
+linking systems
+
+different rendering modes - transition table or state-set (amoeba-like/rectangular)
 
 system null-transition as base
+
+editing mode (transitions for small systems; couplings maybe for larger but without the mapping possibility)
+DSL specification of system group
+
 
 system processing delays (see notes)
 
 speed of perturbation
-
-different rendering modes - transition table or state-set (amoeba-like/rectangular)
 
 interactive with rendering?
 

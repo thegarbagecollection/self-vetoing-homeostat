@@ -2,12 +2,9 @@
  * @interface
  */
 class ISystem {
-    /**
-     * @param {State} state 
-     */
-    init(state) { throw "init(state) not implemented" }
+    toDefaultStartState() { throw "toDefaultState() not implemented" }
     prepareTransition() { throw "prepareTransition() not implemented" }
-    prepareTransition() { throw "transition() not implemented" }
+    transition() { throw "transition() not implemented" }
 }
 
 
@@ -25,7 +22,7 @@ class System extends ISystem{
                 outgoingCouplings: Array.<Coupling>, 
                 transitionTable: TransitionTable}} stateDetails
      */
-    constructor(identifier, learningStrategy, displayName, { allStates, homeostasisStates, endStates, outgoingCouplings, transitionTable }) {
+    constructor(identifier, learningStrategy, displayName, { allStates, homeostasisStates, endStates, defaultStartState, outgoingCouplings, transitionTable }) {
         this.identifier = identifier
         this.displayName = displayName
         this.currentState = null
@@ -36,14 +33,12 @@ class System extends ISystem{
         this.outgoingCouplings = outgoingCouplings
         this.learningStrategy = learningStrategy
         this.learningStrategy.setup(this, transitionTable)
+        this.defaultStartState = defaultStartState
     }
 
-    /**
-     * 
-     * @param {State} state 
-     */
-    init(state) {
-        this.currentState = state
+    
+    toDefaultStartState() {
+        this.currentState = this.defaultStartState
     }
 
     prepareTransition() {
@@ -69,7 +64,7 @@ class Source extends ISystem {
      * @param {String} displayName
      * @param {String} identifier 
      * @param {Array.<State>} allStates 
-     * @param {() => State | StateGenerator | { run: () => State }} stateGenerator
+     * @param {(reset: Boolean) => State | StateGenerator | { run: (reset: Boolean) => State }} stateGenerator
      */
     constructor(identifier, displayName, allStates, stateGenerator) {
         this.identifier = identifier
@@ -81,12 +76,9 @@ class Source extends ISystem {
         this.allStates = allStates
         this.stateGenerator = stateGenerator
     }
-    /**
-     * 
-     * @param {State} state 
-     */
-    init(state) {
-        this.currentState = state
+
+    toDefaultStartState() {
+        this.currentState = this.runStateGenerator(true)
     }
 
     prepareTransition() {
@@ -94,16 +86,20 @@ class Source extends ISystem {
     }
 
     transition() {
-        this.currentState = this.runStateGenerator()
+        this.currentState = this.runStateGenerator(false)
     }
 
-    runStateGenerator() {
+    /**
+     * 
+     * @param {Boolean} reset reset the generator to its default starting state?
+     */
+    runStateGenerator(reset) {
         if (this.stateGenerator instanceof Function) 
-            return this.stateGenerator()
+            return this.stateGenerator(reset)
         else if (this.stateGenerator instanceof StateGenerator)
-            return this.stateGenerator.run()
+            return this.stateGenerator.run(reset)
         else if (typeof this.stateGenerator === "object" && this.stateGenerator.hasOwnProperty("run") && typeof this.stateGenerator.run === "function")
-            return this.stateGenerator.run()
+            return this.stateGenerator.run(reset)
         else
             throw "Was given a stateGenerator that was not a function or an object with a run() method"
     }
@@ -114,9 +110,10 @@ class Source extends ISystem {
  */
 class StateGenerator {
     /**
+     * @param {Boolean} reset (optional) start the state generator in some particular condition, or reset it to that condition if part-way through a sequence of states
      * @returns {State}
      */
-    run() { throw "run() not implemented"}
+    run(reset) { throw "run() not implemented"}
 }
 
 /**

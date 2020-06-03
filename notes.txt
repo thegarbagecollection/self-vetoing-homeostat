@@ -124,6 +124,17 @@ UPDATE: LearningStrategy
 
 
 
+System/coupling creation:
+-------------------------
+Have a mapping of ids->systems, and ids->couplings
+Take a system specification:
+  System IDs
+  for each coupling C=A->B, a tuple (CouplingC_ID, SystemA_ID, SystemB_ID)
+    ensure all couplings valid
+
+
+
+
 OPTIONAL system features
 --------------------------
 delay in processing a received signal: d_p; how long from the first time a signal is received until it is processed?
