@@ -128,8 +128,16 @@ System/coupling creation:
 -------------------------
 Take a system specification:
   a set of system ids B1, ..., Bn
-    for each system id B, a set of state ids Bi for that system
-    states don't need a unique name, they'll be namespaced
+    for each system id B, 
+      a unique identifier
+      optional: display name
+      inferred? a set of state ids Bi for that system (states don't need a unique name, they'll be "namespaced")
+      a state transition specification
+      the null transition table
+        for all u in B, exists v in B s.t. on no input we take transition u->v 
+        identity null transition: maps each state to itself; a system that does nothing in the absence of external input
+      optional: homeostasis state groupings (single/cyclic); can be computed from the null-transition table
+      optional: death states (each is homestasis-single, all transitions lead back to itself)
 
   coupling specifications: two systems A and B may have at most one coupling A->B
   ONE or BOTH of:
@@ -147,25 +155,52 @@ Take a system specification:
 
     every system mentioned in the coupling must be specified fully
 
-  state transition specifications: for a system B 
-    the set of state id tuples T = B x ((V1 x ... x Vn) u { null }) describing every possible transition input (Vi contains null as an element; all nulls maps to null-tuple?)
+  state transition specifications:
+    an identifier
+    a set of states B that is the same as the system states (up to renaming, maybe?)
+    the sets of states V1, ..., Vn describing the visible states
+    the set of state id tuples T = B x (V1 x ... x Vn) describing every possible transition input (Vi contains null as an element; all nulls maps to null-tuple?)
     a set of state transitions: 
       for all t in T, exists u in B s.t. the transition t->u exists
-    the null transition; if no incoming couplings or an incoming coupling can be null ????
-      for all u in B, exists v in B s.t. on no input we take transition u->v 
 
 
   mapping of identifier->display name for specified components (optional per component)
 
   environments?? LATER - select from a range of built-in behaviours or write code for them
 
+"Type-checking" the specifications
+----------------------------------------
+In phases:
+  check identifier uniqueness (takes place in Specification)
+
+
+State transition specification:
+  identifier uniqueness
+  for every transition t->u, u is in B
+
+System specification:
+  identifier uniqueness
+  valid coupling ids
+  valid transition table id
+  homeostasis groupings: requires only the null transition table
+  death states: requires only the null transition table and transition table specification
+  transition state set B matches the system state set
+  every element of the transition state tuples B x V1 x ... x Vn is present and no extra elements exist
+    need to know what V1 x ... x Vn are, which comes from the system couplings
+
+Coupling specification: A->B
+  identifier uniqueness
+  valid A identifier
+  valid B identifier
+  each state Ai is mapped
+  
+
+
+OPTIONAL features
+--------------------------
 syntactic features of the DSL:
   a state tuple with * in any position means it applies to all states of the coupling in that position
 
-
-
-OPTIONAL system features
---------------------------
 delay in processing a received signal: d_p; how long from the first time a signal is received until it is processed?
 delay between signal receiving: d_r ; after a signal is received, how long until the next is received?
 warm-up delay: d_w     (delay until first processing)

@@ -1,10 +1,12 @@
 class Coordinator {
   /**
    * 
-   * @param {Array.<ISystem>} systems 
+   * @param {Specification} specification
    */
-  constructor(systems) {
-    this.systems = systems
+  constructor(specification) {
+    specification.construct()
+    this.systems = specification.getSystems()
+    this.couplings = specification.getCouplings()
   }
   timeStep() {
     this.systems.forEach(system => system.prepareTransition())
@@ -15,3 +17,5 @@ class Coordinator {
     this.systems.forEach(system => system.toDefaultStartState())
   }
 }
+
+
