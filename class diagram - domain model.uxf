@@ -245,7 +245,7 @@ transition()
     <id>UMLClass</id>
     <coordinates>
       <x>270</x>
-      <y>520</y>
+      <y>530</y>
       <w>260</w>
       <h>160</h>
     </coordinates>
@@ -261,16 +261,16 @@ stateGenerator: (reset: Bool) =&gt; State
     <id>Relation</id>
     <coordinates>
       <x>390</x>
-      <y>670</y>
+      <y>680</y>
       <w>550</w>
-      <h>320</h>
+      <h>310</h>
     </coordinates>
     <panel_attributes>r1=source
 r2=outgoingCouplings
 m1=1
 m2=0..*
 lt=-&gt;</panel_attributes>
-    <additional_attributes>10.0;10.0;10.0;290.0;530.0;290.0</additional_attributes>
+    <additional_attributes>10.0;10.0;10.0;280.0;530.0;280.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>

@@ -1,0 +1,26 @@
+
+couplings [
+    C1: A1~>B, "Coupling 1", [v1,v2], [a->v1, b->v2, c->v2]       (could have - or -> or > as map symbol? or ~ : )
+    C2: A2~>B, "Coupling 2", id     (forbids visible states and coupling map)
+]
+
+coupling-maps [
+    C1: [a->v1, b->v2, c->v2]           (if both this and couplings have a map, must match exactly)
+]
+
+
+systems [
+
+B:
+    from [A1, A2, A3, ... ]
+    states [a,b,c,...,z] OR range 1..99; name:shortname for the former?
+    null transition [a->b, ..., y->z]
+    default state b
+    transitions
+    
+
+]
+
+environments [
+
+]

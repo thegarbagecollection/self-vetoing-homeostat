@@ -126,12 +126,41 @@ UPDATE: LearningStrategy
 
 System/coupling creation:
 -------------------------
-Have a mapping of ids->systems, and ids->couplings
 Take a system specification:
-  System IDs
-  for each coupling C=A->B, a tuple (CouplingC_ID, SystemA_ID, SystemB_ID)
-    ensure all couplings valid
+  a set of system ids B1, ..., Bn
+    for each system id B, a set of state ids Bi for that system
+    states don't need a unique name, they'll be namespaced
 
+  coupling specifications: two systems A and B may have at most one coupling A->B
+  ONE or BOTH of:
+    1) a set of 4-tuples (A, B, identifier, mapping) for a coupling A->B with the given identifier
+       where mapping is either "id" or a set of pairs (Ai, Vi) where Ai is a state of A and Vi a visible state OR NULL
+
+    2) a map on ids B -> [A1, ..., An] where B, A1,...,An are system identifiers, and each of A1->B, ..., An->B is a coupling
+       establishes order of the visible state tuple: (a1,...,an) where ai is a state of Ai
+
+    if both 1 and 2, must be consistent
+    if only 1, order of visible state tuple is taken from the order of the couplings
+    if only 2, each coupling has an auto-generated id and the identity mapping
+
+    a set of visible states
+
+    every system mentioned in the coupling must be specified fully
+
+  state transition specifications: for a system B 
+    the set of state id tuples T = B x ((V1 x ... x Vn) u { null }) describing every possible transition input (Vi contains null as an element; all nulls maps to null-tuple?)
+    a set of state transitions: 
+      for all t in T, exists u in B s.t. the transition t->u exists
+    the null transition; if no incoming couplings or an incoming coupling can be null ????
+      for all u in B, exists v in B s.t. on no input we take transition u->v 
+
+
+  mapping of identifier->display name for specified components (optional per component)
+
+  environments?? LATER - select from a range of built-in behaviours or write code for them
+
+syntactic features of the DSL:
+  a state tuple with * in any position means it applies to all states of the coupling in that position
 
 
 
