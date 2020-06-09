@@ -84,7 +84,7 @@ class NestedStateMap {
    */
   toArray() {
     let ret = []
-    for (let [p,v] of this.map.entries()) {
+    for (let [p,v] of this.map) {
       if (this.secondaryCount === 0) {
         ret.push({ p, s: [], v })
       } else {
@@ -95,12 +95,14 @@ class NestedStateMap {
 
   toArrayRecursive(currPri, currSecArray, currDepth, currSecMap, ret) {
     if (currDepth === this.secondaryCount) {
-      for (let [sk, v] of currSecMap.entries()) {
-        ret.push({ p: currPri, s: currSecArray + sk, v: v})
+      for (let [sk, v] of currSecMap) {
+        let newSecArray = Array.from(currSecArray)
+        newSecArray.push(sk)
+        ret.push({ p: currPri, s: newSecArray, v: v})
       }
     }
     else {
-      for (let [sk, v] of currSecMap.entries()) {
+      for (let [sk, v] of currSecMap) {
         let newSecArray = Array.from(currSecArray)
         newSecArray.push(sk)
         this.toArrayRecursive(p, newSecArray, currDepth + 1, v, ret)

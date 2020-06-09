@@ -174,19 +174,28 @@ In phases:
   check identifier uniqueness (takes place in Specification)
 
 
-State transition specification:
+State transition specification (on B x V1 x ... x Vn)
   identifier uniqueness
   for every transition t->u, u is in B
+
+Null transition specification (on B->B)
+  for every transition u->u', both u and u' are in B
+  every state u must be part of exactly one transition u->u'
 
 System specification:
   identifier uniqueness
   valid coupling ids
   valid transition table id
+  must have at least one state
   homeostasis groupings: requires only the null transition table
   death states: requires only the null transition table and transition table specification
   transition state set B matches the system state set
   every element of the transition state tuples B x V1 x ... x Vn is present and no extra elements exist
     need to know what V1 x ... x Vn are, which comes from the system couplings
+
+  WHAT HAPPENS WHEN WE HAVE ONLY THE NULL TRANSITION? WHERE DO WE CHECK IT?
+    probably pass in null as the transition table spec, which then doesn't get checked
+
 
 Coupling specification: A->B
   identifier uniqueness
@@ -200,6 +209,7 @@ OPTIONAL features
 --------------------------
 syntactic features of the DSL:
   a state tuple with * in any position means it applies to all states of the coupling in that position
+  ability to assign a transition NULL to make it into the null transition
 
 delay in processing a received signal: d_p; how long from the first time a signal is received until it is processed?
 delay between signal receiving: d_r ; after a signal is received, how long until the next is received?
