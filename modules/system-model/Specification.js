@@ -1,12 +1,58 @@
 class Specification {
-  constructor() {
-    // identifier ARRAY (find duplicates!) for: systems, couplings, transitions
+  /**
+   * @param {Array.<SystemSpecification>} systemSpecifications 
+   * @param {Array.<CouplingSpecification>} couplingSpecifications 
+   * @param {Array.<TransitionSpecification>} transitionSpecifications 
+   * @param {Array.<NullTransitionSpecification} nullTransitionSpecifications
+   */
+  constructor(systemSpecifications, couplingSpecifications, transitionSpecifications, nullTransitionSpecifications) {
+    this.systemSpecifications = systemSpecifications
+    this.couplingSpecifications = couplingSpecifications
+    this.transitionSpecifications = transitionSpecifications
+    this.nullTransitionSpecifications = nullTransitionSpecifications
+    this.systemIDs = this.systemSpecifications.map(spec => spec.identifier)
+    this.couplingIDs = this.couplingSpecifications.map(spec => spec.identifier)
+    this.transitionIDs = this.transitionSpecifications.map(spec => spec.identifier)
+    this.nullTransitionIDs = this.nullTransitionSpecifications.map(spec => spec.identifier)
   }
-  construct() {}
   checkConflicts() {
-    // checkIdentifiers()
+    let vcr = new ValidationCheckResult()
+    this.checkIdentifierUniqueness(vcr)
     // other stuff
   }
+
+  checkIdentifierUniqueness(checkResult) {
+    let dupSystemIDs = this.getDuplicates(this.systemIDs)
+    if (dupSystemIDs) {
+      checkResult.fail(`Identifier uniqueness error: system identifiers ${dupSystemIDs.join(", ")} are duplicated`)
+    }
+    let dupCouplingIDs = this.getDuplicates(this.couplingIDs)
+    if (dupCouplingIDs) {
+      checkResult.fail(`Identifier uniqueness error: coupling identifiers ${dupCouplingIDs.join(", ")} are duplicated`)
+    }
+    let dupTransitionIDs = this.getDuplicates(this.transitionIDs)
+    if (dupTransitionIDs) {
+      checkResult.fail(`Identifier uniqueness error: transition identifiers ${dupTransitionIDs.join(", ")} are duplicated`)
+    }
+
+  }
+
+  /**
+   * @template T
+   * @param {Array.<T>} array 
+   */
+  getDuplicates(array) {
+    let reduced = Array.from(new Set(array))
+    let cpy = Array.from(array)
+
+    reduced.forEach(e => {
+      let i = cpy.indexOf(e)
+      cpy.splice(i, 1)
+    })
+    return cpy
+  }
+
+  construct() {}
 
   /**
    * @returns {Array.<ISystem>}
@@ -22,54 +68,79 @@ class SystemSpecification {
    *
    * @param {String} identifier
    * @param {String} displayName
-   * @param {SystemStatesSpec} stateIdentifiers
+   * @param {SystemStatesInput} stateIdentifiers
    * @param {String} transitionID
-   * @param {Map.<String, TransitionSpecification>} transitionSpecifications
    * @param {NullTransitionSpecification} nullTransition
-   * @param {SystemStatesSpec} homeostasisGroupings
-   * @param {SystemStatesSpec} deathStates
-   * @param {Array.<CouplingSpecification>} couplings
+   * @param {SystemStatesInput} homeostasisGroupings
+   * @param {SystemStatesInput} deathStates
+   * @param {Array.<String>} incomingCouplings
+   * @param {Array.<String>} outgoingCouplings
    */
-  constructor(identifier, displayName, stateIdentifiers, transitionID, transitionSpecifications, nullTransition, homeostasisGroupings, deathStates, couplings) {
+  constructor(identifier, displayName, stateIdentifiers, transitionID, nullTransition, homeostasisGroupings, deathStates, incomingCouplings, outgoingCouplings) {
     this.identifier = identifier
     this.displayName = displayName ? displayName : identifier
     this.stateIdentifiers = stateIdentifiers
-    this.transitionSpecification = transitionSpecifications.get(transitionID)
+    this.transitionID = transitionID
     this.nullTransition = nullTransition
     this.homeostasisGroupings = homeostasisGroupings
     this.deathStates = deathStates
-    this.couplings = couplings
+    this.incomingCouplings = incomingCouplings
+    this.outgoingCouplings = outgoingCouplings
   }
   check() {
+
     // TODO
     // check transition specification!
+
   }
-  checkHomeostasisGroupings() {}
-  checkDeathStates() {}
+  checkOrAssignHomeostasisGroupings(checkResult) {
+    let generatedHomeostasisGroupings = this.generateHomestasisGroupings()
+    if (this.homeostasisGroupings) {
+      this.compareHomeostasisGroupings(checkResult, generatedHomeostasisGroupings)
+    }
+    else {
+      this.homeostasisGroupings = generatedHomeostasisGroupings
+    }
+  }
+
+  /**
+   * requires homeostasis groupings to have been checked
+   */
+  checkDeathStates(checkResult) {
+
+  }
+
+  generateHomestasisGroupings() {
+
+  }
+
+  compareHomeostasisGroupings(checkResult, generatedHomeostasisGroupings) {
+
+  }
+
   construct() {}
 }
 
 /**
- * @typedef {{primary: String, secondaries: Array.<String>, resultState: String}} SingleTransitionSpec
+ * @typedef {{primary: String, secondaries: Array.<String>, resultState: String}} SingleTransitionInput
  */
 /**
  * @typedef {{primary: String, secondaries: Array.<String>}} SingleTransitionPossibility
  */
 /**
- * @typedef {Array.<SingleTransitionSpec>} TransitionTableSpec
+ * @typedef {Array.<SingleTransitionInput>} TransitionTableInput
  */
 /**
- * @typedef {Array.<String>} SystemStatesSpec
+ * @typedef {Array.<String>} SystemStatesInput
  */
 /**
- * @typedef {Array.<String>} CouplingOutputStateSpec
+ * @typedef {Array.<String>} CouplingOutputStatesInput
  */
 class TransitionSpecification {
   /**
    *
    * @param {String} identifier
-   * @param {SystemStatesSpec} systemStates
-   * @param {TransitionTableSpec} transitions
+   * @param {TransitionTableInput} transitions
    */
   constructor(identifier, transitions) {
     this.identifier = identifier
@@ -78,8 +149,8 @@ class TransitionSpecification {
   /**
    * Requires a transition table to exist - i.e. not simply the null transition
    * @param {String} systemID
-   * @param {SystemStatesSpec} systemStates 
-   * @param {Array.<CouplingOutputStateSpec>} couplingsStates 
+   * @param {SystemStatesInput} systemStates 
+   * @param {Array.<CouplingOutputStatesInput>} couplingsStates 
    */
   checkForSystem(systemID, systemStates, couplingsStates) {
     let checkResult = new ValidationCheckResult()
@@ -99,8 +170,8 @@ class TransitionSpecification {
 
   /**
    * 
-   * @param {SystemStatesSpec} systemStates must be non-empty
-   * @param {Array.<CouplingOutputStateSpec>} couplingsStates must be non-empty
+   * @param {SystemStatesInput} systemStates must be non-empty
+   * @param {Array.<CouplingOutputStatesInput>} couplingsStates must be non-empty
    * @returns {Array.<SingleTransitionPossibility>}
    */
   buildAllPossibleTransitions(systemStates, couplingsStates) {
@@ -141,13 +212,13 @@ class TransitionSpecification {
    * @returns {Boolean}
    */
   checkTransitionInGivenTransitions(possibility) {
-    return this.transitions.some(transition2 => this.compareTransitionPossibility(possibility, transition2))
+    return this.transitions.some(transition => this.compareTransitionPossibility(possibility, transition))
   }
 
   /**
    * 
-   * @param {SingleTransitionPossibility | SingleTransitionSpec} t1 can be either a fully-specified transition (with result) or a transition possibility
-   * @param {SingleTransitionPossibility  | SingleTransitionSpec} t2 
+   * @param {SingleTransitionPossibility | SingleTransitionInput} t1 can be either a fully-specified transition (with result) or a transition possibility
+   * @param {SingleTransitionPossibility  | SingleTransitionInput} t2 can be either a fully-specified transition (with result) or a transition possibility
    * @returns {Boolean}
    */
   compareTransitionPossibility(t1, t2) {
@@ -167,7 +238,7 @@ class TransitionSpecification {
 
   /**
    * 
-   * @param {SingleTransitionSpec} transition 
+   * @param {SingleTransitionInput} transition 
    * @returns {String}
    */
   transitionToString(transition) {
@@ -192,63 +263,116 @@ class TransitionSpecification {
 
 class NullTransitionSpecification {
   /**
-   * @param {SystemStatesSpec} systemStates
+   * @param {String} systemIdentifier
    * @param {Map.<String, String>} mapping
    */
-  constructor(systemIdentifier, systemStates, mapping) {
-    this.systemIdentifier = systemIdentifier
-    this.systemStates = new Set(systemStates)
+  constructor(identifier, mapping) {
+    this.identifier = identifier
     this.mapping = mapping
   }
-  check() {
+  check(systemIdentifier, systemStates) {
     let checkResult = new ValidationCheckResult()
     this.mapping.forEach((v, k) => {
-      if (!this.systemStates.has(v)) {
-        checkResult.fail(`Null transition error: system ${this.systemIdentifier} had a transition ${k}->${v}, but ${v} is not a system state`)
+      if (!systemStates.has(v)) {
+        checkResult.fail(`Null transition error: for null transition ${this.identifier}, system ${systemIdentifier} had a transition ${k}->${v}, but ${v} is not a system state`)
       }
-      if (!this.systemStates.has(k)) {
-        checkResult.fail(`Null transition error: system ${this.systemIdentifier} had a transition ${k}->${v}, but ${k} is not a system state`)
+      if (!systemStates.has(k)) {
+        checkResult.fail(`Null transition error: for null transition ${this.identifier}, system ${systemIdentifier} had a transition ${k}->${v}, but ${k} is not a system state`)
       }
     })
 
-    this.systemStates.forEach(v => {
+    systemStates.forEach(v => {
       if (!this.mapping.has(v)) {
-        checkResult.fail(`Null transition error: system ${this.systemIdentifier} does not have a null transition for state ${v}`)
+        checkResult.fail(`Null transition error: system ${systemIdentifier} does not have a null transition for state ${v}`)
       }
     })
     return checkResult
   }
 }
 
+/**
+ * For some coupling A->B
+ */
 class CouplingSpecification {
   /**
    *
    * @param {String} identifier
-   * @param {String} fromID
-   * @param {SystemStatesSpec} fromStates
-   * @param {String} toID
+   * @param {String} fromID the system the coupling is taking an input from
+   * @param {Map.<String, SystemStatesInput>} fromStatesMap map from system identifiers to states of that system
+   * @param {String} toID the system the coupling is sending an output to
+   * @param {Map.<String, SystemStatesInput>} toStatesMap map from system identifiers to states of that system
    * @param {Map.<String, String>} mapping
    */
-  constructor(identifier, fromID, fromStates, toID, mapping) {
-    this.visibleStates = new Set(mapping.keys())
+  constructor(identifier, fromID, fromStatesMap, toID, toStatesMap, mapping) {
+    this.identifier = identifier
+    this.visibleStates = new Set(mapping.values())
+    this.fromID = fromID
+    this.fromStatesMap = fromStatesMap
+    this.toID = toID
+    this.toStatesMap = toStatesMap
+    this.mapping = mapping
   }
-  check() {}
+  check() {
+    let vcr = new ValidationCheckResult()
+    this.checkAandBValid(vcr)
+    if (vcr.wasSuccess()) {
+      this.checkAStatesMapping(vcr)
+    }
+    return vcr
+  }
+
+  /**
+   * 
+   * @param {ValidationCheckResult} checkResult 
+   */
+  checkAandBExist(checkResult) {
+    if (!this.fromStatesMap.has(this.fromID)) {
+      checkResult.fail(`Coupling error: coupling ${this.identifier} was defined to be ${this.fromID}->${this.toID}, but system ${this.fromID} does not exist`)
+    }
+    if (!this.toStatesMap.has(this.toID)) {
+      checkResult.fail(`Coupling error: coupling ${this.identifier} was defined to be ${this.fromID}->${this.toID}, but system ${this.toID} does not exist`)
+    }
+  }
+
+  /**
+   * 
+   * @param {ValidationCheckResult} checkResult 
+   */
+  checkAStatesMapping(checkResult) {
+    let notFound = this.fromStatesMap.get(this.fromID).filter(id => !this.mapping.has(id))
+    if (notFound){
+      checkResult.fail(`Coupling error: coupling ${this.identifier} did not contain mappings for system ${this.fromID}'s states ${notFound.join(", ")}`)
+    }
+
+    let mappingNotPossible = Array.from(this.mapping.keys()).filter(id => !this.fromStatesMap.get(this.fromID).includes(id))
+    if (mappingNotPossible) {
+      checkResult.warn(`Coupling warning: coupling ${this.identifier} had unreachable mappings from system ${this.fromID}'s states ${mappingNotPossible.join(", ")}`)
+    }
+  }
 }
 
 class ValidationCheckResult {
   constructor() {
     this.failed = false
+    this.failures = 0
+    this.warnings = 0
     this.msgLog = []
   }
   fail(msg) {
+    this.failures++
     this.failed = true
     this.msgLog.push(msg)
   }
   warn(msg) {
+    this.warnings++
     this.msgLog.push(msg)
   }
   wasSuccess() {
     return !this.failed
+  }
+
+  terminate() {
+    this.msgLog.push()
   }
 
   /**
@@ -259,18 +383,23 @@ class ValidationCheckResult {
   merge(other) {
     let vcr = new ValidationCheckResult()
     vcr.failed = this.failed || other.failed
+    vcr.failures = this.failures + other.failures
+    vcr.warnings = this.warnings + other.warnings
     vcr.msgLog = this.msgLog.concat(other.msgLog)
     return vcr
   }
 
   /**
    *
-   * @param  {...ValidationCheckResult} others
+   * @param  {Array.<ValidationCheckResult>} others
    * @returns {ValidationCheckResult}
    */
-  mergeMultiple(...others) {
+  mergeMultiple(others) {
     let vcr = new ValidationCheckResult()
     vcr.failed = this.failed || others.map(o => o.failed).some(x => x)
+    vcr.failures = this.failures + others.map(o => o.failures).reduce((acc, v) => acc + v, 0)
+    vcr.warnings = this.warnings + others.map(o => o.warnings).reduce((acc, v) => acc + v, 0)
     vcr.msgLog = this.msgLog.concat(others.map(o => o.msgLog))
+    return vcr
   }
 }
