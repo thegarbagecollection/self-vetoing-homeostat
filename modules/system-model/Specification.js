@@ -14,13 +14,78 @@ class Specification {
     this.couplingIDs = this.couplingSpecifications.map(spec => spec.identifier)
     this.transitionIDs = this.transitionSpecifications.map(spec => spec.identifier)
     this.nullTransitionIDs = this.nullTransitionSpecifications.map(spec => spec.identifier)
+
+    // Get assigned once IDs are checked for uniqueness
+    this.systemLookup = null
+    this.couplingLookup = null
+    this.transitionLookup = null
+    this.nullTransitionLookup = null
   }
+  /**
+   * @returns {{ systemResultsMerged: ValidationCheckResult, transitionResultsMerged: ValidationCheckResult, nullTransitionResultsMerged: ValidationCheckResult, couplingResultsMerged: ValidationCheckResult }}
+   */
   checkConflicts() {
     let vcr = new ValidationCheckResult()
     this.checkIdentifierUniqueness(vcr)
-    // other stuff
+    if (!vcr.wasSuccess()) {
+      // Early termination - we can't do the checks if identifiers aren't unique
+      return vcr
+    }
+    // build lookups id->spec
+    this.systemLookup = this.buildLookup(this.systemSpecifications)
+    this.couplingLookup = this.buildLookup(this.couplingSpecifications)
+    this.transitionLookup = this.buildLookup(this.transitionSpecifications)
+    this.nullTransitionLookup = this.buildLookup(this.nullTransitionSpecifications)
+
+    let couplingResults = Array.from(this.couplingLookup.values()).map(c => c.check(this.systemLookup))
+
+    /** @type {Map.<String, Array.<CouplingSpecification>} */
+    let incomingCouplings = new Map()
+    /** @type {Map.<String, Array.<CouplingSpecification>} */
+    let outgoingCouplings = new Map()
+    this.couplingSpecifications.forEach(coupling => {
+      if (!incomingCouplings.has(coupling.toID)) incomingCouplings.set(coupling.toID, [])
+      incomingCouplings.get(coupling.toID).push(coupling)
+
+      if (!outgoingCouplings.has(coupling.fromID)) outgoingCouplings.set(coupling.fromID, [])
+      outgoingCouplings.get(coupling.fromID).push(coupling)
+    })
+
+    this.systemSpecifications.forEach(system => system.setIncomingAndOutgoingCouplings(incomingCouplings, outgoingCouplings))
+
+    // this contains, for each system, the system check result, the transition table check result, and the null transition table check result
+    let systemResultsComplete = this.systemSpecifications.map(system => system.check(this.transitionLookup, this.nullTransitionLookup, this.couplingLookup))
+    
+    let systemResults = systemResultsComplete.map(({systemResults}) => systemResults)
+    let transitionResults = systemResultsComplete.map(({ transitionResults }) => transitionResults)
+    let nullTransitionResults = systemResultsComplete.map(({ nullTransitionResults }) => nullTransitionResults)
+
+    // we want all system, transition, null transition, and coupling results combined by category for easy display
+    let systemResultsMerged = systemResults ? systemResults[0].mergeMultiple(systemResults.slice(1)) : null
+    let transitionResultsMerged = transitionResults ? transitionResults[0].mergeMultiple(transitionResults.slice(1)) : null
+    let nullTransitionResultsMerged = nullTransitionResults ? nullTransitionResults[0].mergeMultiple(nullTransitionResults.slice(1)) : null
+    let couplingResultsMerged = couplingResults ? couplingResults[0].mergeMultiple(couplingResults.slice(1)) : null
+
+    return { systemResultsMerged, transitionResultsMerged, nullTransitionResultsMerged, couplingResultsMerged }
   }
 
+  /**
+   * @template {{identifier: String}} T any
+   * @param {Array.<T>} hasIdentifiers any objects with an identifier property
+   * @returns {Map<String, T>} a map from identifiers to their associated object. Behaviour
+   * is undefined if identifiers are duplicated in hasIdentifiers
+   */
+  buildLookup(hasIdentifiers) {
+    let m = new Map()
+    hasIdentifiers.forEach((obj) => {
+      m.set(obj.identifier, obj)
+    })
+    return m
+  }
+
+  /**
+   * @param {ValidationCheckResult} checkResult 
+   */
   checkIdentifierUniqueness(checkResult) {
     let dupSystemIDs = this.getDuplicates(this.systemIDs)
     if (dupSystemIDs) {
@@ -34,7 +99,6 @@ class Specification {
     if (dupTransitionIDs) {
       checkResult.fail(`Identifier uniqueness error: transition identifiers ${dupTransitionIDs.join(", ")} are duplicated`)
     }
-
   }
 
   /**
@@ -63,6 +127,8 @@ class Specification {
    */
   getCouplings() {}
 }
+
+
 class SystemSpecification {
   /**
    *
@@ -70,28 +136,42 @@ class SystemSpecification {
    * @param {String} displayName
    * @param {SystemStatesInput} stateIdentifiers
    * @param {String} transitionID
-   * @param {NullTransitionSpecification} nullTransition
+   * @param {String} nullTransitionID
    * @param {SystemStatesInput} homeostasisGroupings
    * @param {SystemStatesInput} deathStates
-   * @param {Array.<String>} incomingCouplings
-   * @param {Array.<String>} outgoingCouplings
    */
-  constructor(identifier, displayName, stateIdentifiers, transitionID, nullTransition, homeostasisGroupings, deathStates, incomingCouplings, outgoingCouplings) {
+  constructor(identifier, displayName, stateIdentifiers, transitionID, nullTransitionID, homeostasisGroupings, deathStates) {
     this.identifier = identifier
     this.displayName = displayName ? displayName : identifier
     this.stateIdentifiers = stateIdentifiers
     this.transitionID = transitionID
-    this.nullTransition = nullTransition
+    this.nullTransitionID = nullTransitionID
     this.homeostasisGroupings = homeostasisGroupings
     this.deathStates = deathStates
-    this.incomingCouplings = incomingCouplings
-    this.outgoingCouplings = outgoingCouplings
+    this.incomingCouplings = null
+    this.outgoingCouplings = null
   }
-  check() {
 
-    // TODO
-    // check transition specification!
+  /**
+   * 
+   * @param {Map.<String, CouplingSpecification>} incomingCouplings 
+   * @param {Map.<String, CouplingSpecification>} outgoingCouplings 
+   */
+  setIncomingAndOutgoingCouplings(incomingCouplings, outgoingCouplings) {
+    this.incomingCouplings = incomingCouplings.get(this.identifier)
+    this.outgoingCouplings = outgoingCouplings.get(this.identifier)
+  }
 
+  /**
+   * 
+   * @param {Map.<String, TransitionSpecification>} transitionLookup 
+   * @param {Map.<String, NullTransitionSpecification>} nullTransitionLookup 
+   * @param {Map.<String, CouplingSpecification>} couplingLookup 
+   * @returns {{ transitionResults: ValidationCheckResult, nullTransitionResults: ValidationCheckResult, systemResults: ValidationCheckResult }}
+   */
+  check(transitionLookup, nullTransitionLookup, couplingLookup) {
+    TODOasdas ...
+    return { transitionResults, nullTransitionResults, systemResults }
   }
   checkOrAssignHomeostasisGroupings(checkResult) {
     let generatedHomeostasisGroupings = this.generateHomestasisGroupings()
@@ -162,10 +242,10 @@ class TransitionSpecification {
 
     let allPossibleTransitions = this.buildAllPossibleTransitions(systemStates, couplingsStates)
     // check that every possible transition is present
-    this.checkAllPossibleTransitions(checkResult, allPossibleTransitions)
+    this.checkAllPossibleTransitions(checkResult, allPossibleTransitions, systemID)
 
     // Do we need to check that all states in the transition table can be reached? Probably give a warning
-    this.checkAllTransitionsReachable(checkResult, allPossibleTransitions)
+    this.checkAllTransitionsReachable(checkResult, allPossibleTransitions, systemID)
   }
 
   /**
@@ -197,8 +277,9 @@ class TransitionSpecification {
    * Will fail with the given validation check if any transition was missing
    * @param {ValidationCheckResult} checkResult 
    * @param {Array.<SingleTransitionPossibility} allPossibleTransitions
+   * @param {String} systemID for error display
    */
-  checkAllPossibleTransitions(checkResult, allPossibleTransitions) {
+  checkAllPossibleTransitions(checkResult, allPossibleTransitions, systemID) {
     allPossibleTransitions.forEach(transition => {
       if (!this.checkTransitionInGivenTransitions(transition)) {
         checkResult.fail(`Transition table error: table ${this.identifier} in system ${systemID} did not provide a transition for ${this.transitionToString(transition)}`)
@@ -250,8 +331,9 @@ class TransitionSpecification {
    * 
    * @param {ValidationCheckResult} checkResult 
    * @param {Array.<SingleTransitionPossibility>} allPossibleTransitions 
+   * @param {String} systemID for error display
    */
-  checkAllTransitionsReachable(checkResult, allPossibleTransitions) {
+  checkAllTransitionsReachable(checkResult, allPossibleTransitions, systemID) {
     this.transitions.forEach(transition => {
       let possible = allPossibleTransitions.some(possible => this.compareTransitionPossibility(transition, possible))
       if (!possible) {
@@ -261,27 +343,35 @@ class TransitionSpecification {
   }
 }
 
+/**
+ * Check this inside each system that references it
+ */
 class NullTransitionSpecification {
   /**
-   * @param {String} systemIdentifier
+   * @param {String} identifier
    * @param {Map.<String, String>} mapping
    */
   constructor(identifier, mapping) {
     this.identifier = identifier
     this.mapping = mapping
   }
+  /**
+   * @param {String} systemIdentifier used for error message
+   * @param {Array.<String>} systemStates
+   */
   check(systemIdentifier, systemStates) {
     let checkResult = new ValidationCheckResult()
+
     this.mapping.forEach((v, k) => {
-      if (!systemStates.has(v)) {
+      if (!systemStates.includes(v)) {
         checkResult.fail(`Null transition error: for null transition ${this.identifier}, system ${systemIdentifier} had a transition ${k}->${v}, but ${v} is not a system state`)
       }
-      if (!systemStates.has(k)) {
+      if (!systemStates.includes(k)) {
         checkResult.fail(`Null transition error: for null transition ${this.identifier}, system ${systemIdentifier} had a transition ${k}->${v}, but ${k} is not a system state`)
       }
     })
 
-    systemStates.forEach(v => {
+    systems.forEach(v => {
       if (!this.mapping.has(v)) {
         checkResult.fail(`Null transition error: system ${systemIdentifier} does not have a null transition for state ${v}`)
       }
@@ -298,25 +388,28 @@ class CouplingSpecification {
    *
    * @param {String} identifier
    * @param {String} fromID the system the coupling is taking an input from
-   * @param {Map.<String, SystemStatesInput>} fromStatesMap map from system identifiers to states of that system
    * @param {String} toID the system the coupling is sending an output to
-   * @param {Map.<String, SystemStatesInput>} toStatesMap map from system identifiers to states of that system
    * @param {Map.<String, String>} mapping
    */
-  constructor(identifier, fromID, fromStatesMap, toID, toStatesMap, mapping) {
+  constructor(identifier, fromID, toID, mapping) {
     this.identifier = identifier
     this.visibleStates = new Set(mapping.values())
     this.fromID = fromID
-    this.fromStatesMap = fromStatesMap
     this.toID = toID
-    this.toStatesMap = toStatesMap
     this.mapping = mapping
   }
-  check() {
+  /**
+   * 
+   * @param {Map.<String, SystemSpecification>} systems all the systems, mapped by their identifiers
+   * @returns {ValidationCheckResult}
+   */
+  check(systems) {
+    let fromStates = systems.get(fromID) ? systems.get(fromID).stateIdentifiers : null
+    let toStates = systems.get(toID) ? systems.get(toID).stateIdentifiers : null
     let vcr = new ValidationCheckResult()
-    this.checkAandBValid(vcr)
+    this.checkAandBValid(vcr, fromStates, toStates)
     if (vcr.wasSuccess()) {
-      this.checkAStatesMapping(vcr)
+      this.checkAStatesMapping(vcr, fromStates)
     }
     return vcr
   }
@@ -325,11 +418,11 @@ class CouplingSpecification {
    * 
    * @param {ValidationCheckResult} checkResult 
    */
-  checkAandBExist(checkResult) {
-    if (!this.fromStatesMap.has(this.fromID)) {
+  checkAandBExist(checkResult, fromStates, toStates) {
+    if (!fromStates) {
       checkResult.fail(`Coupling error: coupling ${this.identifier} was defined to be ${this.fromID}->${this.toID}, but system ${this.fromID} does not exist`)
     }
-    if (!this.toStatesMap.has(this.toID)) {
+    if (!toStates) {
       checkResult.fail(`Coupling error: coupling ${this.identifier} was defined to be ${this.fromID}->${this.toID}, but system ${this.toID} does not exist`)
     }
   }
@@ -338,13 +431,13 @@ class CouplingSpecification {
    * 
    * @param {ValidationCheckResult} checkResult 
    */
-  checkAStatesMapping(checkResult) {
-    let notFound = this.fromStatesMap.get(this.fromID).filter(id => !this.mapping.has(id))
+  checkAStatesMapping(checkResult, fromStates) {
+    let notFound = fromStates.filter(id => !this.mapping.has(id))
     if (notFound){
       checkResult.fail(`Coupling error: coupling ${this.identifier} did not contain mappings for system ${this.fromID}'s states ${notFound.join(", ")}`)
     }
 
-    let mappingNotPossible = Array.from(this.mapping.keys()).filter(id => !this.fromStatesMap.get(this.fromID).includes(id))
+    let mappingNotPossible = Array.from(this.mapping.keys()).filter(id => !fromStates.includes(id))
     if (mappingNotPossible) {
       checkResult.warn(`Coupling warning: coupling ${this.identifier} had unreachable mappings from system ${this.fromID}'s states ${mappingNotPossible.join(", ")}`)
     }
