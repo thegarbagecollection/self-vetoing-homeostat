@@ -1,3 +1,8 @@
+const TransitionType = {
+  DETERMINISTIC: "D",
+  PROBABILISTIC: "P"
+}
+
 class Specification {
   /**
    * @param {Array.<SystemSpecification>} systemSpecifications 
@@ -56,9 +61,9 @@ class Specification {
     // this contains, for each system, the system check result, the transition table check result, and the null transition table check result
     let systemResultsComplete = this.systemSpecifications.map(system => system.check(this.transitionLookup, this.nullTransitionLookup, this.couplingLookup))
     
-    let systemResults = systemResultsComplete.map(({systemResults}) => systemResults)
-    let transitionResults = systemResultsComplete.map(({ transitionResults }) => transitionResults)
-    let nullTransitionResults = systemResultsComplete.map(({ nullTransitionResults }) => nullTransitionResults)
+    let systemResults = systemResultsComplete.map(({systemResult}) => systemResult)
+    let transitionResults = systemResultsComplete.map(({ transitionResult }) => transitionResult)
+    let nullTransitionResults = systemResultsComplete.map(({ nullTransitionResult }) => nullTransitionResult)
 
     // we want all system, transition, null transition, and coupling results combined by category for easy display
     let systemResultsMerged = systemResults ? systemResults[0].mergeMultiple(systemResults.slice(1)) : null
@@ -136,8 +141,8 @@ class SystemSpecification {
    * @param {String} displayName
    * @param {SystemStatesInput} stateIdentifiers
    * @param {String} transitionID
-   * @param {String} nullTransitionID
-   * @param {SystemStatesInput} homeostasisGroupings
+   * @param {NullTransitionIdentifierToken} nullTransitionID
+   * @param {Array.<SystemStatesInput>} homeostasisGroupings
    * @param {SystemStatesInput} deathStates
    */
   constructor(identifier, displayName, stateIdentifiers, transitionID, nullTransitionID, homeostasisGroupings, deathStates) {
@@ -150,12 +155,15 @@ class SystemSpecification {
     this.deathStates = deathStates
     this.incomingCouplings = null
     this.outgoingCouplings = null
+    this.transitionTable = null
+    this.nullTransitionSpecification = null
+    this.couplingVisibleStates = null
   }
 
   /**
    * 
-   * @param {Map.<String, CouplingSpecification>} incomingCouplings 
-   * @param {Map.<String, CouplingSpecification>} outgoingCouplings 
+   * @param {Map.<String, Array.<CouplingSpecification>>} incomingCouplings 
+   * @param {Map.<String, Array.<CouplingSpecification>>} outgoingCouplings 
    */
   setIncomingAndOutgoingCouplings(incomingCouplings, outgoingCouplings) {
     this.incomingCouplings = incomingCouplings.get(this.identifier)
@@ -170,12 +178,66 @@ class SystemSpecification {
    * @returns {{ transitionResults: ValidationCheckResult, nullTransitionResults: ValidationCheckResult, systemResults: ValidationCheckResult }}
    */
   check(transitionLookup, nullTransitionLookup, couplingLookup) {
-    TODOasdas ...
-    return { transitionResults, nullTransitionResults, systemResults }
+    let systemResult = new ValidationCheckResult()
+    let nullTransitionResult = new ValidationCheckResult()
+    let transitionResult = new ValidationCheckResult()
+
+    if (!this.stateIdentifiers) {
+      systemResult.fail(`System error: system ${this.identifier} had no state identifiers`)
+      return { systemResult, nullTransitionResult, transitionResult }
+    }
+
+    if (this.stateIdentifiers.length !== new Set(this.stateIdentifiers).size) {
+      systemResult.warn(`System error: system ${this.identifier} had duplicated system state identifiers`)
+    }
+
+    // We allow a transition table to be empty - it'll just behave as the null transition
+    this.transitionTable = transitionLookup.get(this.transitionID)
+    if (this.transitionTable) {
+      this.couplingVisibleStates = this.buildOrderedCouplingVisibleStates()
+      transitionResult = this.transitionTable.checkForSystem(this.identifier, this.stateIdentifiers, couplingVisibleStates)
+    }
+
+    // We don't allow null transitions to be empty, but they CAN be the "identity"
+    if (this.nullTransitionID instanceof NullTransitionIdentifier_Identity) {
+      let generatedNullTransitionID = `#null_identity_${this.identifier}`
+      let generatedNullTransitionMap = new Map()
+      this.stateIdentifiers.forEach(s => generatedNullTransitionMap.set(s, s))
+      this.nullTransitionSpecification = new NullTransitionSpecification(generatedNullTransitionID, generatedNullTransitionMap)
+    }
+    else if (this.nullTransitionID instanceof NullTransitionIdentifier) {
+      this.nullTransitionSpecification = nullTransitionLookup.get(this.nullTransitionID.identifier)
+    } // no other cases
+    
+    if (!this.nullTransitionSpecification) {
+      systemResult.fail(`System error: system ${this.identifier} had no null transition mapping`)
+    }
+    else {
+      nullTransitionResult = this.nullTransitionSpecification.check(this.identifier, this.stateIdentifiers)
+      this.checkOrAssignHomeostasisGroupings(systemResult)
+      this.checkDeathStates(systemResult)
+    }
+    
+    return { transitionResult, nullTransitionResult, systemResult }
   }
+
   checkOrAssignHomeostasisGroupings(checkResult) {
-    let generatedHomeostasisGroupings = this.generateHomestasisGroupings()
+    let generatedHomeostasisGroupings = this.generateHomeostasisGroupings()
     if (this.homeostasisGroupings) {
+      // it's entirely possible to have states NOT in a homeostasis grouping - non-homeostasis states!
+      // so we just need to check to make sure homeostasis states aren't duplicated and all given homeostasis states exist
+      let homeostasisStates = this.homeostasisGroupings.flat()
+
+      let homeostasisStatesNotExisting = homeostasisStates.filter(g => !this.stateIdentifiers.includes(g))
+      if (homeostasisStatesNotExisting) {
+        systemResult.warn(`System error: system ${this.identifier} had the following specified homeostasis states that did not appear in the system states: ${homeostasisStatesNotExisting.join(", ")}`)
+      }
+
+      let statesInMultipleHomeostasisGroupings = homeostasisStates.filter(s => homeostasisStates.filter(s2 => s === s2).length > 1)
+      if (statesInMultipleHomeostasisGroupings) {
+        systemResult.warn(`System error: system ${this.identifier} had the following specified homeostasis states that appeared multiple times: ${statesInMultipleHomeostasisGroupings.join(", ")}`)
+      }
+
       this.compareHomeostasisGroupings(checkResult, generatedHomeostasisGroupings)
     }
     else {
@@ -184,19 +246,74 @@ class SystemSpecification {
   }
 
   /**
-   * requires homeostasis groupings to have been checked
+   * if incoming couplings exist
+   * @returns {Array.<CouplingOutputStatesInput>} the array containing arrays of coupling visible states,
+   * each coupling in the same order as specified in this system's coupling list
+   */
+  buildOrderedCouplingVisibleStates() {
+    return this.incomingCouplings.map(incoming => incoming.visibleStates)
+  }
+
+  /**
+   * requires homeostasis groupings to have been checked.
+   * A death state must be a system state, and must occur in a single-element homeostasis grouping
+   * @param {ValidationCheckResult} checkResult
    */
   checkDeathStates(checkResult) {
+    let nonExistentDeathStates = this.deathStates.filter(deathState => !this.stateIdentifiers.includes(deathState))
+    if (nonExistentDeathStates) {
+      checkResult.fail(`System error: system ${this.identifier} had death states that were not in its system states: ${nonExistentDeathStates.join(", ")}`)
+    }
+    let invalidDeathStates = this.deathStates.filter(deathState => !nonExistentDeathStates.includes(deathState) && !this.homeostasisGroupings.some(homeostasisGrouping => homeostasisGrouping.includes(deathState) && homeostasisGrouping.length === 1))
+    if (invalidDeathStates) {
+      checkResult.fail(`System error: system ${this.identifier} had death states not corresponding to a single-element homeostasis state group: ${invalidDeathStates.join(", ")}`)
+    }
+  }
+
+  generateHomeostasisGroupings() {
+    // we've got some issues here - it's trivial in a purely-deterministic system, but what is homeostasis in a probabilistic system?
+    // can't just say "yeah it's all cyclic states and sinks" because the probabilistic nature needs to be taken into account, I think.
+    // Ok, checked Ashby's Introduction, p. 229: "state of equilibrium" is how he phrases it; once a system gets into it it can't get out, so it's
+    // the SCCs of the graph when you remove all 0-probability transitions. Given that 0-probability transitions aren't going to exist, we can just do
+    // an SCC. This also works for deterministic systems - a cycle of vertices is an SCC on its own, as is a sink vertex (although non-sinks can also 
+    // be SCCs! watch out - has to be a sink, not just a single-component SCC).
+    
+    // Interesting note: does that mean that a crisis state is a state of equilibrium? guess so! he does actually mention on p.81 (5/11) that sometimes
+    // homeostasis is in an unwanted state!
+
+    console.log("NEED TO GENERATE HOMEOSTASIS GROUPINGS")
+
+
+
 
   }
 
-  generateHomestasisGroupings() {
-
-  }
-
+  /**
+   * 
+   * @param {ValidationCheckResult} checkResult 
+   * @param {Array.<SystemStatesInput>} generatedHomeostasisGroupings 
+   */
   compareHomeostasisGroupings(checkResult, generatedHomeostasisGroupings) {
+    // We go both ways: 
+    // for each generated grouping G, there must exist some provided grouping P where all of G are in P
+    // for each provided grouping P, there must exist some generated grouping G where all of P are in G
 
+    let generatedUnmatched = generatedHomeostasisGroupings
+      .filter(generatedGrouping => 
+        !this.homeostasisGroupings.some(providedGrouping => 
+          generatedGrouping.every(g => providedGrouping.includes(g)) ))
+
+    let providedUnmatched = this.homeostasisGroupings
+      .filter(providedGrouping => 
+        !this.generatedHomeostasisGroupings.some(generatedGrouping =>
+          providedGrouping.every(p => generatedGrouping.includes(p))))
+
+    if (generatedUnmatched) {
+      checkResult.warn(`System warning: system ${this.identifier} found the following generated homeostasis groupings unmatched by the provided groupings: ${generatedUnmatched.join(", ")}`)
+      checkResult.warn(`System warning: system ${this.identifier} found the following provided homeostasis groupings unmatched by the generated groupings: ${providedUnmatched.join(", ")}`)
+    }
   }
+
 
   construct() {}
 }
@@ -231,6 +348,7 @@ class TransitionSpecification {
    * @param {String} systemID
    * @param {SystemStatesInput} systemStates 
    * @param {Array.<CouplingOutputStatesInput>} couplingsStates 
+   * @returns {ValidationCheckResult}
    */
   checkForSystem(systemID, systemStates, couplingsStates) {
     let checkResult = new ValidationCheckResult()
@@ -246,6 +364,8 @@ class TransitionSpecification {
 
     // Do we need to check that all states in the transition table can be reached? Probably give a warning
     this.checkAllTransitionsReachable(checkResult, allPossibleTransitions, systemID)
+
+    return checkResult
   }
 
   /**
@@ -358,6 +478,7 @@ class NullTransitionSpecification {
   /**
    * @param {String} systemIdentifier used for error message
    * @param {Array.<String>} systemStates
+   * @returns {ValidationCheckResult}
    */
   check(systemIdentifier, systemStates) {
     let checkResult = new ValidationCheckResult()
@@ -496,3 +617,23 @@ class ValidationCheckResult {
     return vcr
   }
 }
+
+
+
+
+
+/**
+ * Token for parsing null transitions - it will either be some identifier, or
+ * the identity-transition that leaves everything the same
+ */
+class NullTransitionIdentifierToken { }
+
+class NullTransitionIdentifier_Identity extends NullTransitionIdentifierToken { }
+
+class NullTransitionIdentifier extends NullTransitionIdentifierToken {
+  constructor(identifier) {
+    this._identifier = identifier
+  }
+  get identifier() { return this._identifier }
+}
+

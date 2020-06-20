@@ -184,8 +184,9 @@ Null transition specification (on B->B)
 
 System specification:
   identifier uniqueness
-  valid coupling ids
+  valid coupling ids - implicit, since couplings are 1-1 so this is checked in coupling def
   valid transition table id
+  valid null transition id
   must have at least one state
   homeostasis groupings: requires only the null transition table
   death states: requires only the null transition table and transition table specification
